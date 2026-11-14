@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>White Space</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            background-color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            z-index: 1;
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 40;
+            padding: 16px;
+        }
+        .card {
+            border: 1.5px solid #111;
+            padding: 28px 24px;
+            border-radius: 22px;
+            width: 100%;
+            max-width: 340px;
+            text-align: center;
+            background: #fff;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.06);
+        }
+        .card h2 { margin: 0 0 6px 0; font-size: 24px; font-weight: 800; color: #111; letter-spacing: -0.5px; }
+        .card p { margin: 0 0 18px 0; font-size: 13px; color: #666; }
+        .card input {
+            width: 100%;
+            padding: 12px 14px;
+            margin: 6px 0;
+            border: 1.5px solid #e2e2e2;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+            transition: border-color 0.2s;
+        }
+        .card input:focus { border-color: #111; }
+        .card button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 14px;
+            background: #111;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .card button:active { transform: scale(0.98); }
+        #statusMsg { margin-top: 10px; font-size: 12px; color: #e94560; min-height: 16px; }
+
+        /* Rights & Creator Notice ONLY under Login Box */
+        .login-rights {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 12px;
+            color: #555;
+            line-height: 1.5;
+            letter-spacing: 0.2px;
+        }
+        .login-rights strong {
+            color: #111;
+            font-weight: 700;
+        }
+
+        /* Minimalist Top HUD */
+        #hud {
+            position: fixed;
+            top: max(12px, env(safe-area-inset-top));
+            left: max(12px, env(safe-area-inset-left));
+            right: max(12px, env(safe-area-inset-right));
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 20;
+            gap: 8px;
+        }
+        .panel {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 5px 8px;
+            border-radius: 14px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            font-size: 12px;
+        }
+        .panel button {
+            padding: 6px 10px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: #fff;
+            border-radius: 9px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            color: #111;
+            white-space: nowrap;
+        }
+        .panel button:active { background: #f2f2f2; }
+
+        /* Collapsible Customize Drawer */
+        #customDrawer {
+            position: fixed;
+            top: calc(max(12px, env(safe-area-inset-top)) + 48px);
+            left: max(12px, env(safe-area-inset-left));
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid #111;
+            padding: 12px;
+            border-radius: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 25;
+            box-shadow: 0 14px 36px rgba(0,0,0,0.1);
+            max-width: calc(100vw - 24px);
+        }
+        .drawer-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .drawer-row button {
+            padding: 7px 11px;
+            border: 1px solid #e0e0e0;
+            background: #fff;
+            border-radius: 9px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .drawer-row button.active {
+            background: #111;
+            color: #fff;
+            border-color: #111;
+        }
+        .color-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.15s;
+        }
+        .color-dot.active {
+            border-color: #111;
+            transform: scale(1.18);
+        }
+
+        .badge {
+            background: #f4f4f5;
+            padding: 5px 9px;
+            border-radius: 8px;
+            font-weight: 700;
+            color: #111;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .speed-tag {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 5px 8px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .live-tag {
+            background: #fff3e0;
+            color: #ef6c00;
+            padding: 4px 8px;
+            border-radius: 7px;
+            font-size: 10px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* Compact Bottom Chat Bar */
+        #bottomBar {
+            position: fixed;
+            bottom: max(12px, env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 6px;
+            align-items: center;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 5px 8px;
+            border-radius: 14px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+            width: min(350px, calc(100vw - 24px));
+        }
+        #chatInput {
+            border: none;
+            outline: none;
+            font-size: 14px;
+            flex: 1;
+            min-width: 60px;
+            background: transparent;
+            color: #111;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        #bottomBar button {
+            padding: 6px 10px;
+            border-radius: 9px;
+            border: none;
+            background: #111;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        #bottomBar button.emote-btn {
+            background: #f4f4f5;
+            color: #111;
+            padding: 5px 8px;
+            font-size: 14px;
+        }
+
+        /* Ergonomic Mobile Thumb Controls */
+        #joystickZone {
+            position: fixed;
+            bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px);
+            left: max(18px, env(safe-area-inset-left));
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(17, 17, 17, 0.04);
+            border: 1.5px solid rgba(17, 17, 17, 0.14);
+            display: none;
+            touch-action: none;
+            z-index: 22;
+        }
+        #joystickKnob {
+            position: absolute;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(17, 17, 17, 0.45);
+            top: 36px;
+            left: 36px;
+            pointer-events: none;
+        }
+        #mobileDashBtn {
+            position: fixed;
+            bottom: calc(max(12px, env(safe-area-inset-bottom)) + 80px);
+            right: max(18px, env(safe-area-inset-right));
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: rgba(17, 17, 17, 0.88);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 22;
+            touch-action: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.14);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login / Register Screen -->
+    <div id="loginScreen">
+        <div class="card">
+            <h2>White Space</h2>
+            <p>Modern unlimited space &bull; phone &amp; PC</p>
+            <input type="text" id="usernameInput" placeholder="Username" maxlength="14">
+            <input type="password" id="passwordInput" placeholder="Password">
+            <input type="text" id="roomInput" placeholder="World Name (e.g. world1)" value="world1" maxlength="16">
+            <button onclick="startGame()">Enter Space</button>
+            <div id="statusMsg"></div>
+        </div>
+        <div class="login-rights">
+            &copy; 2026 <strong>Sadee</strong>. All Rights Reserved.<br>
+            Created by <strong>Sadeesh</strong>
+        </div>
+    </div>
+
+    <!-- Minimalist Top HUD -->
+    <div id="hud">
+        <div class="panel">
+            <button id="drawerToggle" onclick="toggleDrawer()">Style</button>
+            <button onclick="goHome()">Center</button>
+            <button id="soundBtn" onclick="toggleSound()">Audio: ON</button>
+            <span class="speed-tag" id="speedBadge">SPD 1.0x</span>
+        </div>
+        <div class="panel">
+            <span class="live-tag" id="connStatus">CONNECTING</span>
+            <span class="badge" id="playerCount">1</span>
+            <button onclick="changeZoom(0.2)">+</button>
+            <button onclick="changeZoom(-0.2)">-</button>
+        </div>
+    </div>
+
+    <!-- Collapsible Shape & Color Drawer -->
+    <div id="customDrawer">
+        <div class="drawer-row">
+            <button id="btn-square" class="active" onclick="setShape('square')">Square</button>
+            <button id="btn-circle" onclick="setShape('circle')">Circle</button>
+            <button id="btn-triangle" onclick="setShape('triangle')">Triangle</button>
+            <button id="btn-diamond" onclick="setShape('diamond')">Diamond</button>
+            <button id="btn-star" onclick="setShape('star')">Star</button>
+        </div>
+        <div class="drawer-row" id="colorPalette"></div>
+    </div>
+
+    <!-- Bottom Chat & Emote Bar -->
+    <div id="bottomBar">
+        <button class="emote-btn" onclick="sendEmote('👋')">👋</button>
+        <button class="emote-btn" onclick="sendEmote('⚡')">⚡</button>
+        <input type="text" id="chatInput" placeholder="Say something..." maxlength="36">
+        <button onclick="sendChat()">Send</button>
+    </div>
+
+    <!-- Mobile Thumb Controls -->
+    <div id="joystickZone"><div id="joystickKnob"></div></div>
+    <div id="mobileDashBtn">DASH</div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // High-DPI Crisp Rendering at All Zoom Levels
+        let viewW = window.innerWidth;
+        let viewH = window.innerHeight;
+        let dpr = 1;
+
+        function resize() {
+            dpr = Math.min(window.devicePixelRatio || 1, 3);
+            viewW = window.innerWidth;
+            viewH = window.innerHeight;
+            canvas.width = Math.floor(viewW * dpr);
+            canvas.height = Math.floor(viewH * dpr);
+            canvas.style.width = viewW + 'px';
+            canvas.style.height = viewH + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.imageSmoothingEnabled = true;
+        }
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', () => setTimeout(resize, 150));
+        resize();
+
+        // ============================================================
+        // MODERN SOFT MARIMBA / GLASS SOUND ENGINE
+        // ============================================================
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function ensureAudio() {
+            if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playGlassNote(freq, duration = 0.25, vol = 0.06, delay = 0) {
+            if (!soundEnabled) return;
+            ensureAudio();
+            if (!audioCtx) return;
+            try {
+                const start = audioCtx.currentTime + delay;
+                const osc = audioCtx.createOscillator();
+                const overtone = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const overGain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, start);
+
+                overtone.type = 'sine';
+                overtone.frequency.setValueAtTime(freq * 2, start);
+
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.linearRampToValueAtTime(vol, start + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+                overGain.gain.setValueAtTime(0.0001, start);
+                overGain.gain.linearRampToValueAtTime(vol * 0.22, start + 0.01);
+                overGain.gain.exponentialRampToValueAtTime(0.0001, start + duration * 0.5);
+
+                osc.connect(gain);
+                overtone.connect(overGain);
+                gain.connect(audioCtx.destination);
+                overGain.connect(audioCtx.destination);
+
+                osc.start(start);
+                overtone.start(start);
+                osc.stop(start + duration + 0.02);
+                overtone.stop(start + duration + 0.02);
+            } catch (e) {}
+        }
+
+        function playSoftWhoosh() {
+            if (!soundEnabled) return;
+            ensureAudio();
+            if (!audioCtx) return;
+            try {
+                const start = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(160, start);
+                osc.frequency.exponentialRampToValueAtTime(320, start + 0.16);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(420, start);
+
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.linearRampToValueAtTime(0.06, start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(start);
+                osc.stop(start + 0.2);
+            } catch (e) {}
+        }
+
+        function playSoftThud() {
+            if (!soundEnabled) return;
+            ensureAudio();
+            if (!audioCtx) return;
+            try {
+                const start = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(145, start);
+                osc.frequency.exponentialRampToValueAtTime(62, start + 0.14);
+
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.linearRampToValueAtTime(0.09, start + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.15);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(start);
+                osc.stop(start + 0.16);
+            } catch (e) {}
+        }
+
+        const SFX = {
+            dash: () => playSoftWhoosh(),
+            bounce: () => playSoftThud(),
+            blueSpeed: (level) => {
+                const base = 523.25 + level * 65;
+                playGlassNote(base, 0.22, 0.06, 0);
+                playGlassNote(base * 1.25, 0.28, 0.055, 0.06);
+            },
+            spark: () => {
+                const notes = [523.25, 659.25, 783.99, 1046.5];
+                const pick = notes[Math.floor(Math.random() * notes.length)];
+                playGlassNote(pick, 0.28, 0.05, 0);
+            },
+            join: () => {
+                playGlassNote(523.25, 0.25, 0.05, 0);
+                playGlassNote(659.25, 0.32, 0.05, 0.08);
+            },
+            vanish: () => {
+                playGlassNote(587.33, 0.22, 0.045, 0);
+                playGlassNote(392.00, 0.30, 0.045, 0.08);
+            },
+            ui: () => playGlassNote(659.25, 0.14, 0.04, 0)
+        };
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundBtn').innerText = soundEnabled ? 'Audio: ON' : 'Audio: OFF';
+            if (soundEnabled) SFX.ui();
+        }
+
+        // Smooth shortest-path angle interpolation helper
+        function lerpAngle(current, target, factor) {
+            let diff = target - current;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            return current + diff * factor;
+        }
+
+        // Color Palette
+        const COLORS = ['#111111', '#e94560', '#2b7fff', '#00b894', '#f39c12', '#8e44ad'];
+        const paletteDiv = document.getElementById('colorPalette');
+        COLORS.forEach((hex, idx) => {
+            const dot = document.createElement('div');
+            dot.className = 'color-dot' + (idx === 0 ? ' active' : '');
+            dot.style.backgroundColor = hex;
+            dot.onclick = () => setColor(hex, dot);
+            paletteDiv.appendChild(dot);
+        });
+
+        function toggleDrawer() {
+            const d = document.getElementById('customDrawer');
+            d.style.display = d.style.display === 'flex' ? 'none' : 'flex';
+            SFX.ui();
+        }
+
+        // Camera, Speed Cap & Unlimited Modern Map State
+        let zoom = viewW < 600 ? 0.9 : 1.0;
+        let loggedIn = false;
+        let worldTopic = 'sadee/whitespace/world1';
+        let mqttClient = null;
+        let brokerIndex = 0;
+        let connectTimeout = null;
+        let syncInterval = null;
+        let camera = { x: 0, y: 0, shake: 0 };
+
+        const BASE_ACCEL = 0.85;
+        const BASE_MAX_SPEED = 6.8;
+        const MAX_SPEED_MULT = 2.2;
+
+        const BROKERS = [
+            { name: 'WORLDWIDE', url: 'wss://broker.emqx.io:8084/mqtt' },
+            { name: 'RELAY 2',   url: 'wss://broker.hivemq.com:8884/mqtt' },
+            { name: 'RELAY 3',   url: 'wss://test.mosquitto.org:8081/mqtt' }
+        ];
+
+        const myId = 'u_' + Math.random().toString(36).substring(2, 10);
+        const me = {
+            id: myId,
+            name: 'Player',
+            x: (Math.random() - 0.5) * 140,
+            y: (Math.random() - 0.5) * 140,
+            vx: 0,
+            vy: 0,
+            angle: -Math.PI / 2, // Facing direction in radians
+            tilt: 0,             // Dynamic banking / turning lean
+            stretch: 1,          // Dynamic forward velocity stretch
+            size: 20,
+            shape: 'square',
+            color: '#111111',
+            speedMult: 1.0,
+            chat: '',
+            chatTimer: 0,
+            dashCooldown: 0,
+            squash: 1,
+            trail: []
+        };
+
+        const remotePlayers = {};
+        const vanishingPlayers = [];
+        const particles = [];
+        const ripples = [];
+
+        // Floating Light Orbs
+        const lightOrbs = [];
+        const AMBIENT_COLORS = ['#e94560', '#00b894', '#f39c12', '#8e44ad'];
+
+        function ensureNearbyOrbs() {
+            for (let i = lightOrbs.length - 1; i >= 0; i--) {
+                if (Math.hypot(lightOrbs[i].x - me.x, lightOrbs[i].y - me.y) > 2200) {
+                    lightOrbs.splice(i, 1);
+                }
+            }
+            while (lightOrbs.length < 26) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 140 + Math.random() * 1300;
+                const isBlue = Math.random() < 0.42;
+                lightOrbs.push({
+                    x: me.x + Math.cos(angle) * dist,
+                    y: me.y + Math.sin(angle) * dist,
+                    phase: Math.random() * Math.PI * 2,
+                    isBlue: isBlue,
+                    color: isBlue ? '#2b7fff' : AMBIENT_COLORS[Math.floor(Math.random() * AMBIENT_COLORS.length)]
+                });
+            }
+        }
+
+        function updateSpeedBadge() {
+            const el = document.getElementById('speedBadge');
+            if (!el) return;
+            if (me.speedMult >= MAX_SPEED_MULT) {
+                el.innerText = 'MAX ' + MAX_SPEED_MULT.toFixed(1) + 'x';
+                el.style.background = '#2563eb';
+                el.style.color = '#ffffff';
+            } else {
+                el.innerText = 'SPD ' + me.speedMult.toFixed(1) + 'x';
+                el.style.background = '#eff6ff';
+                el.style.color = '#2563eb';
+            }
+        }
+
+        // Login & Registration
+        function startGame() {
+            const user = document.getElementById('usernameInput').value.trim();
+            const pass = document.getElementById('passwordInput').value.trim();
+            const room = document.getElementById('roomInput').value.trim() || 'world1';
+            const statusMsg = document.getElementById('statusMsg');
+
+            if (!user || !pass) {
+                statusMsg.innerText = 'Please enter a username and password.';
+                return;
+            }
+
+            ensureAudio();
+
+            const saved = JSON.parse(localStorage.getItem('sadee_ws_users') || '{}');
+            if (saved[user]) {
+                if (saved[user].pass !== pass) {
+                    statusMsg.innerText = 'Incorrect password for "' + user + '".';
+                    return;
+                }
+                me.shape = saved[user].shape || 'square';
+                me.color = saved[user].color || '#111111';
+            } else {
+                saved[user] = { pass, shape: 'square', color: '#111111' };
+                localStorage.setItem('sadee_ws_users', JSON.stringify(saved));
+            }
+
+            me.name = user;
+            me.speedMult = 1.0;
+            worldTopic = 'sadee/whitespace/' + room.toLowerCase().replace(/[^a-z0-9]/g, '');
+            camera.x = me.x;
+            camera.y = me.y;
+            ensureNearbyOrbs();
+            updateSpeedBadge();
+            addRipple(me.x, me.y, me.color, 90);
+
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('bottomBar').style.display = 'flex';
+            loggedIn = true;
+
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || viewW < 768) {
+                document.getElementById('joystickZone').style.display = 'block';
+                document.getElementById('mobileDashBtn').style.display = 'flex';
+            }
+
+            updateMenuUI();
+            connectCloudRelay();
+            SFX.join();
+        }
+
+        function saveProfile() {
+            const saved = JSON.parse(localStorage.getItem('sadee_ws_users') || '{}');
+            if (saved[me.name]) {
+                saved[me.name].shape = me.shape;
+                saved[me.name].color = me.color;
+                localStorage.setItem('sadee_ws_users', JSON.stringify(saved));
+            }
+        }
+
+        function goHome() {
+            me.x = (Math.random() - 0.5) * 120;
+            me.y = (Math.random() - 0.5) * 120;
+            me.vx = 0;
+            me.vy = 0;
+            ensureNearbyOrbs();
+            addRipple(me.x, me.y, me.color, 110);
+            SFX.dash();
+        }
+
+        function addRipple(x, y, color, maxR = 80) {
+            ripples.push({ x, y, r: 8, maxR, alpha: 0.35, color });
+        }
+
+        // Fast Heartbeat & Offline Player Detection + Vanish Animation
+        function connectCloudRelay() {
+            if (typeof mqtt === 'undefined') {
+                setConnBadge('SOLO MODE', '#ffebee', '#c62828');
+                return;
+            }
+
+            if (mqttClient) {
+                try { mqttClient.end(true); } catch (e) {}
+            }
+            clearTimeout(connectTimeout);
+            clearInterval(syncInterval);
+
+            const broker = BROKERS[brokerIndex % BROKERS.length];
+            setConnBadge('CONNECTING', '#fff3e0', '#ef6c00');
+
+            mqttClient = mqtt.connect(broker.url, {
+                clientId: 'sadee_' + myId + '_' + Math.floor(Math.random() * 9999),
+                clean: true,
+                connectTimeout: 4500,
+                reconnectPeriod: 0
+            });
+
+            connectTimeout = setTimeout(() => {
+                if (!mqttClient || !mqttClient.connected) {
+                    brokerIndex++;
+                    connectCloudRelay();
+                }
+            }, 4800);
+
+            mqttClient.on('connect', () => {
+                clearTimeout(connectTimeout);
+                setConnBadge(broker.name, '#e8f5e9', '#2e7d32');
+                mqttClient.subscribe(worldTopic + '/+');
+
+                publishState();
+                syncInterval = setInterval(() => {
+                    publishState();
+                    checkOfflinePlayers();
+                }, 120);
+            });
+
+            mqttClient.on('message', (topic, message) => {
+                try {
+                    const data = JSON.parse(message.toString());
+                    if (!data || data.id === myId) return;
+
+                    if (data.type === 'leave') {
+                        triggerPlayerVanish(data.id);
+                        return;
+                    }
+
+                    const px = Number(data.x);
+                    const py = Number(data.y);
+                    const pAngle = typeof data.angle === 'number' ? data.angle : -Math.PI / 2;
+                    if (isNaN(px) || isNaN(py)) return;
+
+                    if (!remotePlayers[data.id]) {
+                        remotePlayers[data.id] = {
+                            id: data.id,
+                            name: data.name || 'Player',
+                            x: px,
+                            y: py,
+                            targetX: px,
+                            targetY: py,
+                            angle: pAngle,
+                            targetAngle: pAngle,
+                            tilt: 0,
+                            stretch: 1,
+                            shape: data.shape || 'square',
+                            color: data.color || '#2b7fff',
+                            chat: data.chat || '',
+                            lastSeen: Date.now(),
+                            spawnScale: 0.1
+                        };
+                        addRipple(px, py, data.color || '#2b7fff', 85);
+                        SFX.join();
+                    } else {
+                        const rp = remotePlayers[data.id];
+                        rp.name = data.name || rp.name;
+                        rp.targetX = px;
+                        rp.targetY = py;
+                        rp.targetAngle = pAngle;
+                        rp.shape = data.shape || rp.shape;
+                        rp.color = data.color || rp.color;
+                        rp.chat = data.chat || '';
+                        rp.lastSeen = Date.now();
+                    }
+
+                    updatePlayerCount();
+                } catch (e) {}
+            });
+
+            mqttClient.on('error', () => {
+                clearTimeout(connectTimeout);
+                brokerIndex++;
+                setTimeout(connectCloudRelay, 600);
+            });
+
+            mqttClient.on('close', () => {
+                if (loggedIn) {
+                    setConnBadge('RECONNECTING', '#fff3e0', '#ef6c00');
+                    setTimeout(connectCloudRelay, 1500);
+                }
+            });
+        }
+
+        function triggerPlayerVanish(id) {
+            const rp = remotePlayers[id];
+            if (!rp) return;
+            vanishingPlayers.push({
+                x: rp.x,
+                y: rp.y,
+                angle: rp.angle,
+                tilt: 0,
+                stretch: 1,
+                size: 20,
+                shape: rp.shape,
+                color: rp.color,
+                name: rp.name,
+                alpha: 1,
+                scale: 1
+            });
+            addRipple(rp.x, rp.y, rp.color, 95);
+            SFX.vanish();
+            delete remotePlayers[id];
+            updatePlayerCount();
+        }
+
+        function checkOfflinePlayers() {
+            const now = Date.now();
+            for (const id in remotePlayers) {
+                if (now - remotePlayers[id].lastSeen > 1800) {
+                    triggerPlayerVanish(id);
+                }
+            }
+        }
+
+        function publishState() {
+            if (!mqttClient || !mqttClient.connected) return;
+            const payload = {
+                type: 'state',
+                id: myId,
+                name: me.name,
+                x: Math.round(me.x),
+                y: Math.round(me.y),
+                angle: Number(me.angle.toFixed(2)),
+                shape: me.shape,
+                color: me.color,
+                chat: me.chatTimer > 0 ? me.chat : ''
+            };
+            mqttClient.publish(worldTopic + '/' + myId, JSON.stringify(payload), { qos: 0 });
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (mqttClient && mqttClient.connected) {
+                mqttClient.publish(worldTopic + '/' + myId, JSON.stringify({ type: 'leave', id: myId }));
+            }
+        });
+
+        function setConnBadge(text, bg, color) {
+            const el = document.getElementById('connStatus');
+            el.innerText = text;
+            el.style.background = bg;
+            el.style.color = color;
+        }
+
+        function updatePlayerCount() {
+            document.getElementById('playerCount').innerText = 1 + Object.keys(remotePlayers).length;
+        }
+
+        // Customization & Chat
+        function setShape(newShape) {
+            me.shape = newShape;
+            me.squash = 1.3;
+            addRipple(me.x, me.y, me.color, 65);
+            saveProfile();
+            updateMenuUI();
+            publishState();
+            SFX.ui();
+        }
+
+        function setColor(hex, el) {
+            me.color = hex;
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+            if (el) el.classList.add('active');
+            addRipple(me.x, me.y, hex, 65);
+            saveProfile();
+            publishState();
+            SFX.ui();
+        }
+
+        function updateMenuUI() {
+            document.querySelectorAll('#customDrawer button').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById('btn-' + me.shape);
+            if (btn) btn.classList.add('active');
+        }
+
+        function changeZoom(delta) {
+            zoom = Math.max(0.35, Math.min(2.2, zoom + delta));
+        }
+
+        window.addEventListener('wheel', (e) => {
+            if (!loggedIn) return;
+            changeZoom(e.deltaY < 0 ? 0.12 : -0.12);
+        });
+
+        // Two-Finger Pinch-to-Zoom on Mobile
+        let initialPinchDist = null;
+        let initialZoom = 1;
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                initialZoom = zoom;
+            }
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialPinchDist) {
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                zoom = Math.max(0.35, Math.min(2.2, initialZoom * (dist / initialPinchDist)));
+            }
+        });
+        canvas.addEventListener('touchend', () => { initialPinchDist = null; });
+
+        function sendChat() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            me.chat = text;
+            me.chatTimer = 260;
+            input.value = '';
+            input.blur();
+            publishState();
+            SFX.ui();
+        }
+
+        function sendEmote(emoji) {
+            me.chat = emoji;
+            me.chatTimer = 190;
+            me.squash = 1.3;
+            publishState();
+            SFX.ui();
+        }
+
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') sendChat();
+        });
+
+        // Controls
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement === document.getElementById('chatInput')) return;
+            const k = e.key.toLowerCase();
+            keys[k] = true;
+            if (k === ' ' && loggedIn) triggerDash();
+        });
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+        function triggerDash() {
+            if (me.dashCooldown > 0) return;
+            let dx = joyVector.x;
+            let dy = joyVector.y;
+            if (keys['arrowup'] || keys['w']) dy -= 1;
+            if (keys['arrowdown'] || keys['s']) dy += 1;
+            if (keys['arrowleft'] || keys['a']) dx -= 1;
+            if (keys['arrowright'] || keys['d']) dx += 1;
+
+            const len = Math.hypot(dx, dy);
+            if (len > 0) {
+                dx /= len;
+                dy /= len;
+                me.angle = Math.atan2(dy, dx);
+            } else {
+                // Dash in the exact direction the shape is currently facing
+                dx = Math.cos(me.angle);
+                dy = Math.sin(me.angle);
+            }
+
+            const dashPower = 12 * Math.min(1.5, me.speedMult);
+            me.vx += dx * dashPower;
+            me.vy += dy * dashPower;
+            me.dashCooldown = 34;
+            me.squash = 1.42;
+            addRipple(me.x, me.y, me.color, 70);
+            SFX.dash();
+        }
+
+        // Mobile Joystick & Dash
+        const joyZone = document.getElementById('joystickZone');
+        const joyKnob = document.getElementById('joystickKnob');
+        let joyVector = { x: 0, y: 0 };
+        let joyTouchId = null;
+
+        joyZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const t = e.changedTouches[0];
+            joyTouchId = t.identifier;
+            updateJoystick(t);
+        });
+        joyZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joyTouchId) {
+                    updateJoystick(e.changedTouches[i]);
+                }
+            }
+        });
+        function resetJoystick(e) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joyTouchId) {
+                    joyTouchId = null;
+                    joyKnob.style.transform = 'translate(0px, 0px)';
+                    joyVector = { x: 0, y: 0 };
+                }
+            }
+        }
+        joyZone.addEventListener('touchend', resetJoystick);
+        joyZone.addEventListener('touchcancel', resetJoystick);
+
+        function updateJoystick(touch) {
+            const rect = joyZone.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            let dx = touch.clientX - cx;
+            let dy = touch.clientY - cy;
+            const dist = Math.hypot(dx, dy);
+            const maxDist = 42;
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+            joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            joyVector = { x: dx / maxDist, y: dy / maxDist };
+        }
+
+        document.getElementById('mobileDashBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerDash();
+        });
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 1.2 + Math.random() * 3.8;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd,
+                    life: 22 + Math.random() * 12,
+                    color
+                });
+            }
+        }
+
+        // Main Physics Update (With Smooth Body Turning, Banking Tilt & Velocity Stretch)
+        function update() {
+            if (!loggedIn) return;
+
+            if (me.chatTimer > 0) me.chatTimer--;
+            if (me.dashCooldown > 0) me.dashCooldown--;
+            me.squash += (1 - me.squash) * 0.16;
+
+            let moveX = joyVector.x;
+            let moveY = joyVector.y;
+            if (keys['arrowup'] || keys['w']) moveY -= 1;
+            if (keys['arrowdown'] || keys['s']) moveY += 1;
+            if (keys['arrowleft'] || keys['a']) moveX -= 1;
+            if (keys['arrowright'] || keys['d']) moveX += 1;
+
+            const len = Math.hypot(moveX, moveY);
+            if (len > 1) { moveX /= len; moveY /= len; }
+
+            // Smooth Directional Body Turning & Banking Lean
+            if (len > 0.05) {
+                const targetAngle = Math.atan2(moveY, moveX);
+                const prevAngle = me.angle;
+                me.angle = lerpAngle(me.angle, targetAngle, 0.22);
+
+                // Calculate angular turn rate for realistic banking tilt
+                let turnDelta = me.angle - prevAngle;
+                while (turnDelta < -Math.PI) turnDelta += Math.PI * 2;
+                while (turnDelta > Math.PI) turnDelta -= Math.PI * 2;
+                me.tilt += (turnDelta * 1.4 - me.tilt) * 0.25;
+            } else {
+                me.tilt *= 0.85;
+            }
+
+            // Apply speed multiplier from eaten Blue Orbs
+            const currentAccel = BASE_ACCEL * me.speedMult;
+            me.vx += moveX * currentAccel;
+            me.vy += moveY * currentAccel;
+            me.vx *= 0.87;
+            me.vy *= 0.87;
+
+            // Enforce hard maximum velocity cap
+            const currentMaxVel = BASE_MAX_SPEED * me.speedMult;
+            const speedNow = Math.hypot(me.vx, me.vy);
+            if (speedNow > currentMaxVel && me.dashCooldown < 24) {
+                me.vx = (me.vx / speedNow) * currentMaxVel;
+                me.vy = (me.vy / speedNow) * currentMaxVel;
+            }
+
+            // Dynamic forward velocity stretch
+            const targetStretch = 1 + Math.min(0.28, speedNow * 0.022);
+            me.stretch += (targetStretch - me.stretch) * 0.2;
+
+            me.x += me.vx;
+            me.y += me.vy;
+
+            ensureNearbyOrbs();
+
+            // Eating Floating Orbs
+            for (let i = lightOrbs.length - 1; i >= 0; i--) {
+                const orb = lightOrbs[i];
+                orb.phase += 0.05;
+                if (Math.hypot(me.x - orb.x, me.y - orb.y) < me.size + 15) {
+                    addRipple(orb.x, orb.y, orb.color, orb.isBlue ? 115 : 85);
+                    spawnParticles(orb.x, orb.y, orb.color, orb.isBlue ? 12 : 7);
+                    me.squash = 1.28;
+
+                    if (orb.isBlue) {
+                        if (me.speedMult < MAX_SPEED_MULT) {
+                            me.speedMult = Math.min(MAX_SPEED_MULT, Number((me.speedMult + 0.1).toFixed(2)));
+                            updateSpeedBadge();
+                        }
+                        SFX.blueSpeed(Math.round((me.speedMult - 1) * 10));
+                    } else {
+                        SFX.spark();
+                    }
+
+                    lightOrbs.splice(i, 1);
+                }
+            }
+
+            // Smooth silk motion trail aligned with body angle
+            if (speedNow > 2.0) {
+                me.trail.push({
+                    x: me.x - Math.cos(me.angle) * 8,
+                    y: me.y - Math.sin(me.angle) * 8,
+                    alpha: 0.22
+                });
+            }
+            me.trail.forEach(t => t.alpha -= 0.022);
+            me.trail = me.trail.filter(t => t.alpha > 0);
+
+            // Smooth Deadzone Camera Follow
+            const deadX = (viewW * 0.14) / zoom;
+            const deadY = (viewH * 0.14) / zoom;
+            if (me.x - camera.x > deadX) camera.x += (me.x - deadX - camera.x) * 0.12;
+            if (me.x - camera.x < -deadX) camera.x += (me.x + deadX - camera.x) * 0.12;
+            if (me.y - camera.y > deadY) camera.y += (me.y - deadY - camera.y) * 0.12;
+            if (me.y - camera.y < -deadY) camera.y += (me.y + deadY - camera.y) * 0.12;
+
+            if (camera.shake > 0) camera.shake *= 0.82;
+
+            // Remote players smooth movement, turning & bouncing
+            for (const id in remotePlayers) {
+                const p = remotePlayers[id];
+                if (p.spawnScale < 1) p.spawnScale = Math.min(1, p.spawnScale + 0.08);
+                const prevX = p.x;
+                const prevY = p.y;
+                p.x += (p.targetX - p.x) * 0.25;
+                p.y += (p.targetY - p.y) * 0.25;
+
+                const rSpeed = Math.hypot(p.x - prevX, p.y - prevY);
+                const prevAng = p.angle;
+                p.angle = lerpAngle(p.angle, p.targetAngle, 0.25);
+                let rTurn = p.angle - prevAng;
+                while (rTurn < -Math.PI) rTurn += Math.PI * 2;
+                while (rTurn > Math.PI) rTurn -= Math.PI * 2;
+                p.tilt += (rTurn * 1.4 - p.tilt) * 0.25;
+                p.stretch += ((1 + Math.min(0.25, rSpeed * 0.03)) - p.stretch) * 0.2;
+
+                const dx = me.x - p.x;
+                const dy = me.y - p.y;
+                const dist = Math.hypot(dx, dy);
+                const minDist = me.size + 20;
+
+                if (dist < minDist && dist > 0) {
+                    const overlap = (minDist - dist) * 0.6;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    me.x += nx * overlap;
+                    me.y += ny * overlap;
+                    me.vx += nx * 7.5;
+                    me.vy += ny * 7.5;
+                    me.squash = 1.38;
+                    camera.shake = 4;
+                    const midX = (me.x + p.x) / 2;
+                    const midY = (me.y + p.y) / 2;
+                    addRipple(midX, midY, p.color || '#111', 90);
+                    spawnParticles(midX, midY, '#111', 7);
+                    SFX.bounce();
+                }
+            }
+
+            // Update ripples
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const rp = ripples[i];
+                rp.r += (rp.maxR - rp.r) * 0.12;
+                rp.alpha *= 0.92;
+                if (rp.alpha < 0.01) ripples.splice(i, 1);
+            }
+
+            // Update vanishing offline players
+            for (let i = vanishingPlayers.length - 1; i >= 0; i--) {
+                const vp = vanishingPlayers[i];
+                vp.scale *= 0.86;
+                vp.alpha -= 0.06;
+                if (vp.alpha <= 0.02) vanishingPlayers.splice(i, 1);
+            }
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].x += particles[i].vx;
+                particles[i].y += particles[i].vy;
+                particles[i].life--;
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawPolygon(ctx, x, y, r, sides, rot) {
+            ctx.beginPath();
+            for (let i = 0; i < sides; i++) {
+                const a = rot + (i * Math.PI * 2) / sides;
+                const px = x + Math.cos(a) * r;
+                const py = y + Math.sin(a) * r;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        }
+
+        function drawStarShape(ctx, x, y, r) {
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const rad = i % 2 === 0 ? r * 1.15 : r * 0.52;
+                const a = i * (Math.PI / 5); // Point 0 faces right (+X = 0 radians)
+                const px = x + Math.cos(a) * rad;
+                const py = y + Math.sin(a) * rad;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        }
+
+        function drawPlayer(p, isMe) {
+            const x = Number(p.x) || 0;
+            const y = Number(p.y) || 0;
+            const baseScale = isMe ? me.squash : (p.spawnScale || 1);
+            const s = (p.size || 20) * baseScale;
+            const color = p.color || '#111111';
+            const angle = typeof p.angle === 'number' ? p.angle : -Math.PI / 2;
+            const tilt = p.tilt || 0;
+            const stretch = p.stretch || 1;
+            const invZoom = 1 / zoom;
+
+            // Soft modern ambient shadow (stays grounded below player)
+            ctx.fillStyle = 'rgba(0,0,0,0.06)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + s * 0.9, s * 0.9, s * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Rotate & Bank the Player Body in Movement Direction
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle + tilt);
+            ctx.scale(stretch, 1 / Math.sqrt(stretch));
+
+            ctx.fillStyle = color;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5 * invZoom;
+
+            if (p.shape === 'circle') {
+                ctx.beginPath();
+                ctx.arc(0, 0, s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else if (p.shape === 'triangle') {
+                // Sleek directional dart triangle pointing straight along +X (forward)
+                ctx.beginPath();
+                ctx.moveTo(s * 1.35, 0);
+                ctx.lineTo(-s * 0.95, -s * 0.95);
+                ctx.lineTo(-s * 0.62, 0);
+                ctx.lineTo(-s * 0.95, s * 0.95);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (p.shape === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(s * 1.35, 0);
+                ctx.lineTo(0, -s * 0.95);
+                ctx.lineTo(-s * 1.15, 0);
+                ctx.lineTo(0, s * 0.95);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (p.shape === 'star') {
+                drawStarShape(ctx, 0, 0, s);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                // Rounded directional square body
+                ctx.fillRect(-s, -s, s * 2, s * 2);
+                ctx.strokeRect(-s, -s, s * 2, s * 2);
+            }
+
+            // Crisp Front Direction Eye / Nose Indicator so every shape clearly shows its heading
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(s * 0.48, 0, Math.max(2.6, s * 0.16), 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            // Plain Clean Letters Only for Name Tag (Stays upright above the turning body)
+            const fontScale = Math.max(1, 0.85 * invZoom);
+            const label = p.name || 'Player';
+            ctx.font = '700 ' + Math.round(13 * fontScale) + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center';
+            const textY = y - s - 14 * fontScale;
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+            ctx.lineWidth = 3 * fontScale;
+            ctx.strokeText(label, x, textY);
+
+            ctx.fillStyle = isMe ? '#111111' : '#333333';
+            ctx.fillText(label, x, textY);
+
+            // Speech bubble
+            if (p.chat) {
+                ctx.font = '600 ' + Math.round(14 * fontScale) + 'px sans-serif';
+                const cw = ctx.measureText(p.chat).width + 20 * fontScale;
+                const ch = 26 * fontScale;
+                const by = textY - 34 * fontScale;
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#111111';
+                ctx.lineWidth = 1.5 * invZoom;
+                ctx.fillRect(x - cw / 2, by, cw, ch);
+                ctx.strokeRect(x - cw / 2, by, cw, ch);
+                ctx.fillStyle = '#111111';
+                ctx.fillText(p.chat, x, by + 18 * fontScale);
+            }
+        }
+
+        function draw() {
+            // Pure Solid White Canvas
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, viewW, viewH);
+            if (!loggedIn) return;
+
+            const invZoom = 1 / zoom;
+
+            ctx.save();
+            const shakeX = (Math.random() - 0.5) * camera.shake;
+            const shakeY = (Math.random() - 0.5) * camera.shake;
+            ctx.translate(viewW / 2 + shakeX, viewH / 2 + shakeY);
+            ctx.scale(zoom, zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            // Minimalist Origin Compass Dot at (0,0)
+            ctx.beginPath();
+            ctx.arc(0, 0, 5 * Math.max(1, 0.8 * invZoom), 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+            ctx.fill();
+
+            // Modern Expanding Ripples
+            ripples.forEach(rp => {
+                ctx.beginPath();
+                ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+                ctx.strokeStyle = rp.color;
+                ctx.globalAlpha = rp.alpha;
+                ctx.lineWidth = 1.8 * invZoom;
+                ctx.stroke();
+            });
+            ctx.globalAlpha = 1;
+
+            // Floating Orbs (Blue Orbs increase speed up to MAX 2.2x)
+            lightOrbs.forEach(orb => {
+                const baseR = orb.isBlue ? 7.5 : 5.5;
+                const r = baseR + Math.sin(orb.phase) * 1.8;
+
+                ctx.beginPath();
+                ctx.arc(orb.x, orb.y, r * 2.3, 0, Math.PI * 2);
+                ctx.fillStyle = orb.color;
+                ctx.globalAlpha = orb.isBlue ? 0.14 : 0.08;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(orb.x, orb.y, r, 0, Math.PI * 2);
+                ctx.globalAlpha = 0.92;
+                ctx.fill();
+
+                if (orb.isBlue) {
+                    ctx.beginPath();
+                    ctx.arc(orb.x, orb.y, r + 3.5, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#2b7fff';
+                    ctx.lineWidth = 1.2 * invZoom;
+                    ctx.globalAlpha = 0.45;
+                    ctx.stroke();
+                }
+            });
+            ctx.globalAlpha = 1;
+
+            // Local motion trail
+            me.trail.forEach(t => {
+                ctx.fillStyle = me.color;
+                ctx.globalAlpha = t.alpha;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, me.size * 0.55, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Vanishing offline players
+            vanishingPlayers.forEach(vp => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, vp.alpha);
+                ctx.translate(vp.x, vp.y);
+                ctx.scale(vp.scale, vp.scale);
+                ctx.translate(-vp.x, -vp.y);
+                drawPlayer(vp, false);
+                ctx.restore();
+            });
+
+            // Remote players
+            for (const id in remotePlayers) {
+                drawPlayer(remotePlayers[id], false);
+            }
+
+            // Local player
+            drawPlayer(me, true);
+
+            // Particles
+            particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = Math.max(0, pt.life / 32);
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 3.5 * Math.max(1, 0.7 * invZoom), 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            ctx.restore();
+
+            // Off-screen Edge Pointers for Remote Players
+            for (const id in remotePlayers) {
+                const p = remotePlayers[id];
+                const sx = (p.x - camera.x) * zoom + viewW / 2;
+                const sy = (p.y - camera.y) * zoom + viewH / 2;
+                const pad = 28;
+                if (sx < 0 || sx > viewW || sy < 0 || sy > viewH) {
+                    const cx = Math.max(pad, Math.min(viewW - pad, sx));
+                    const cy = Math.max(pad + 42, Math.min(viewH - pad - 52, sy));
+                    ctx.fillStyle = p.color || '#2b7fff';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>
