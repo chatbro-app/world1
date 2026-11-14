@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.chatbro_app.twa",
+        "sha256_cert_fingerprints": ["A1:3A:C9:87:2B:A9:60:1F:B5:1D:B9:2A:51:E3:2A:97:CC:99:71:DF:75:B2:34:43:A9:AB:64:EF:57:F4:73:81"]
+      }
+    }]
